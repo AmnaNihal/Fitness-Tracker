@@ -21,6 +21,32 @@ export default function Workouts() {
   const [activeCategory, setActiveCategory] = useState('All');
 
 
+  const [view, setView] = useState('custom'); // 'custom' or 'ai'
+const [aiPrefs, setAiPrefs] = useState({
+    weight: userData?.weight || '', 
+    height: userData?.height || '',
+    age: '', goal: 'weight loss', modality: 'HIIT'
+});
+const [aiResults, setAiResults] = useState([]);
+const [aiHealthData, setAiHealthData] = useState(null);
+const [aiLoading, setAiLoading] = useState(false);
+
+const handleAIDiscovery = async () => {
+  setAiLoading(true);
+  try {
+    const token = localStorage.getItem('token');
+    // Calling your Express Proxy (Step 2 from previous message)
+    const { data } = await API.post('/workouts/recommend', aiPrefs, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    setAiResults(data.videos);
+    setAiHealthData(data.health_profile);
+  } catch (err) {
+    console.error("AI discovery failed", err);
+  } finally {
+    setAiLoading(false);
+  }
+};
 
 // Logging workout session
 
@@ -164,163 +190,152 @@ const handleCompleteWorkout = async (workout) => {
       </aside>
 
       <main className="flex-1 ml-20 lg:ml-64 p-8 pt-32 lg:pt-12">
-        <header className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-12">
-          <div>
-            <h1 className="text-4xl font-serif italic mb-2">Workouts</h1>
-            <p className="text-zinc-500 font-medium tracking-wide">Manage your custom routines</p>
-          </div>
-          <div className="flex gap-4">
-           
-            <button 
-              onClick={() => { setEditingWorkout(null); setIsModalOpen(true); }}
-              className="bg-[#BFFF00] text-black px-6 py-3 rounded-xl font-black uppercase text-xs tracking-widest flex items-center gap-2 hover:bg-[#a6d900] transition-colors"
-            >
-              <Plus size={16} /> New Routine
-            </button>
-          </div>
-        </header>
+  <header className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-12">
+    <div>
+      <h1 className="text-4xl font-serif italic mb-2">Workouts</h1>
+      <p className="text-zinc-500 font-medium tracking-wide">Manage your custom routines or discover AI plans</p>
+    </div>
+    <div className="flex gap-4">
+      <button 
+        onClick={() => { setEditingWorkout(null); setIsModalOpen(true); }}
+        className="bg-[#BFFF00] text-black px-6 py-3 rounded-xl font-black uppercase text-xs tracking-widest flex items-center gap-2 hover:bg-[#a6d900] transition-colors"
+      >
+        <Plus size={16} /> New Routine
+      </button>
+    </div>
+  </header>
 
-
-{/* --- SEARCH & FILTER BAR --- */}
-<div className="flex flex-col md:flex-row gap-4 mb-8">
-  <div className="flex-1 relative">
-    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={18} />
-    <input 
-      type="text"
-      placeholder="Search by name or #tag..."
-      className="w-full bg-white/5 border border-white/10 rounded-xl pl-12 pr-4 py-3 text-sm focus:outline-none focus:border-[#BFFF00]/50 transition-colors"
-      value={searchQuery}
-      onChange={(e) => setSearchQuery(e.target.value)}
-    />
-  </div>
-
-  {/* NEW DROPDOWN CATEGORY FILTER */}
-  <div className="relative min-w-[160px]">
-    <select
-      value={activeCategory}
-      onChange={(e) => setActiveCategory(e.target.value)}
-      className="w-full appearance-none bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-xs font-bold uppercase tracking-widest text-zinc-400 focus:outline-none focus:border-[#BFFF00]/50 cursor-pointer"
+  {/* TAB SWITCHER */}
+  <div className="flex gap-2 mb-8 bg-white/5 p-1 rounded-2xl w-fit">
+    <button 
+      onClick={() => setView('custom')}
+      className={`px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${view === 'custom' ? 'bg-[#BFFF00] text-black' : 'text-zinc-500'}`}
     >
-      <option value="All" className="bg-black">All Categories</option>
-      <option value="Strength" className="bg-black">Strength</option>
-      <option value="Cardio" className="bg-black">Cardio</option> 
-      <option value="Cardio" className="bg-black">Flexibility</option>
-      <option value="Cardio" className="bg-black">HIIT</option>
-      {/* Add more <option> tags here as you grow */}
-    </select>
-    {/* Custom arrow icon for the dropdown */}
-    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" size={14} />
+      My Routines
+    </button>
+    <button 
+      onClick={() => setView('ai')}
+      className={`px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${view === 'ai' ? 'bg-[#BFFF00] text-black' : 'text-zinc-500'}`}
+    >
+      AI Discovery
+    </button>
   </div>
-</div>
 
-
-{/* Routine List Area */}
-<div className="space-y-4">
-  {loading ? (
-    <p className="text-zinc-500 animate-pulse">Loading...</p>
-  ) : filteredWorkouts.length > 0 ? (
-    /* CHANGE THIS LINE FROM workouts.map TO filteredWorkouts.map */
-    filteredWorkouts.map((workout) => (
-      <GlowCard key={workout._id} className="p-6">
-        {/* ... the rest of your card code remains exactly the same ... */}
-        <div className="flex items-center justify-between">
-          <div 
-            className="flex items-center gap-4 cursor-pointer flex-1"
-            onClick={() => setExpandedId(expandedId === workout._id ? null : workout._id)}
-          >
-            <Activity size={20} className="text-[#BFFF00]" />
-            <div>
-              <h3 className="font-bold text-lg">{workout.name}</h3>
-              <div className="flex items-center gap-3">
-                <p className="text-zinc-600 text-[10px] uppercase font-black tracking-widest">
-                  {workout.category}
-                </p>
-                {workout.tags && workout.tags.length > 0 && (
-                  <div className="flex gap-2">
-                    {workout.tags.map((tag, index) => (
-                      <span key={index} className="text-[#BFFF00] text-[9px] font-bold uppercase tracking-tighter opacity-70">
-                        #{tag}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-            {expandedId === workout._id ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}
-          </div>
-
-          <div className="flex gap-2">
-            <button onClick={() => { setEditingWorkout(workout); setIsModalOpen(true); }} className="p-2 text-zinc-500 hover:text-white">
-              <Edit3 size={18} />
-            </button>
-            <button onClick={() => handleDelete(workout._id)} className="p-2 text-zinc-500 hover:text-red-500">
-              <Trash2 size={18} />
-            </button>
-          </div>
+  {view === 'custom' ? (
+    <>
+      {/* --- SEARCH & FILTER BAR --- */}
+      <div className="flex flex-col md:flex-row gap-4 mb-8">
+        <div className="flex-1 relative">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={18} />
+          <input 
+            type="text"
+            placeholder="Search routines..."
+            className="w-full bg-white/5 border border-white/10 rounded-xl pl-12 pr-4 py-3 text-sm focus:outline-none focus:border-[#BFFF00]/50 transition-colors"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
         </div>
+      </div>
 
-        {expandedId === workout._id && (
-          <div className="mt-6 border-t border-white/5 pt-4 space-y-3"> 
-            {workout.notes && (
-              <div className="bg-[#BFFF00]/5 border-l-2 border-[#BFFF00] p-3 rounded-r-lg mb-3">
-                <p className="text-[10px] uppercase font-black text-[#BFFF00] tracking-widest mb-1">
-                  Coaching Notes
-                </p>
-                <p className="text-zinc-400 text-sm italic">"{workout.notes}"</p>
-              </div>
-            )}
-         
-         
-           {workout.exercises?.map((ex, i) => (
-  <div key={i} className="flex items-center justify-between bg-white/[0.02] p-3 rounded-lg border border-white/5">
-    <div className="flex items-center gap-3">
-       <input 
-         type="checkbox" 
-         className="accent-[#BFFF00] w-4 h-4 cursor-pointer"
-         // CONNECTED LOGIC
-         checked={ex.completed || false}
-         onChange={() => handleToggleExercise(workout._id, ex._id, ex.completed)}
-       />
-       <span className={`text-sm font-medium ${ex.completed ? 'text-zinc-500 line-through' : 'text-white'}`}>
-         {ex.exerciseName}
-       </span>
-    </div>
-    <div className="text-zinc-500 text-xs font-mono">
-      {ex.sets}s × {ex.reps}r — {ex.weight}kg
-    </div>
-  </div>
-))}
-
-{/* Workout Logs */}
-
-<button 
-  onClick={() => handleCompleteWorkout(workout)}
-  className="w-full mt-6 bg-[#BFFF00] text-black py-4 rounded-xl font-black uppercase text-xs tracking-[0.2em] hover:bg-white transition-all active:scale-[0.98] flex items-center justify-center gap-3"
->
-  <div className="w-1.5 h-1.5 bg-black rounded-full animate-pulse" />
-  Complete Session & Sync Log
-</button>
-
-
-          </div>
-        )}
-      </GlowCard>
-    ))
+      {/* Routine List Area */}
+      <div className="space-y-4">
+        {loading ? (
+          <p className="text-zinc-500 animate-pulse">Loading...</p>
+        ) : filteredWorkouts.map((workout) => (
+          <GlowCard key={workout._id} className="p-6">
+             {/* ... (Your existing workout card code) ... */}
+          </GlowCard>
+        ))}
+      </div>
+    </>
   ) : (
-    /* Helpful message if search returns nothing */
-    <div className="text-center py-12 border border-dashed border-white/5 rounded-2xl">
-      <p className="text-zinc-500">No routines found matching your filters.</p>
+    /* THIS IS THE 'AI' VIEW AREA */
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <GlowCard className="p-8">
+        <h3 className="text-[#BFFF00] font-black uppercase text-xs tracking-[0.3em] mb-6">AI Parameter Config</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
+          <section>
+            <label className="text-[10px] text-zinc-500 uppercase font-black block mb-2">Weight (kg)</label>
+            <input type="number" className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm focus:border-[#BFFF00] outline-none" value={aiPrefs.weight} onChange={(e) => setAiPrefs({...aiPrefs, weight: e.target.value})} />
+          </section>
+          <section>
+            <label className="text-[10px] text-zinc-500 uppercase font-black block mb-2">Height (cm)</label>
+            <input type="number" className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm focus:border-[#BFFF00] outline-none" value={aiPrefs.height} onChange={(e) => setAiPrefs({...aiPrefs, height: e.target.value})} />
+          </section>
+          <section>
+            <label className="text-[10px] text-zinc-500 uppercase font-black block mb-2">Age</label>
+            <input type="number" className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm focus:border-[#BFFF00] outline-none" value={aiPrefs.age} onChange={(e) => setAiPrefs({...aiPrefs, age: e.target.value})} />
+          </section>
+          <section>
+            <label className="text-[10px] text-zinc-500 uppercase font-black block mb-2">Goal</label>
+            <select className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm focus:border-[#BFFF00] outline-none" value={aiPrefs.goal} onChange={(e) => setAiPrefs({...aiPrefs, goal: e.target.value})}>
+              <option value="weight loss">Weight Loss</option>
+              <option value="muscle gain">Muscle Gain</option>
+              <option value="fitness">General Fitness</option>
+            </select>
+          </section>
+          <section>
+            <label className="text-[10px] text-zinc-500 uppercase font-black block mb-2">Modality</label>
+            <select className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm focus:border-[#BFFF00] outline-none" value={aiPrefs.modality} onChange={(e) => setAiPrefs({...aiPrefs, modality: e.target.value})}>
+              <option value="HIIT">HIIT</option>
+              <option value="Strength">Strength</option>
+              <option value="Yoga">Yoga</option>
+            </select>
+          </section>
+        </div>
+        <button 
+          onClick={handleAIDiscovery}
+          disabled={aiLoading}
+          className="w-full mt-8 bg-white text-black py-4 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-[#BFFF00] transition-colors disabled:opacity-50"
+        >
+          {aiLoading ? "Generating AI Plan..." : "Generate Smart Routine"}
+        </button>
+      </GlowCard>
+
+      {/* HEALTH INSIGHTS BOXES */}
+      {aiHealthData && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-in fade-in duration-700">
+          <GlowCard className="p-4 text-center border-[#BFFF00]/20">
+            <p className="text-[10px] font-black text-zinc-500 uppercase mb-1">BMI</p>
+            <p className="text-xl font-bold text-[#BFFF00]">{aiHealthData.bmi}</p>
+          </GlowCard>
+          <GlowCard className="p-4 text-center border-[#BFFF00]/20">
+            <p className="text-[10px] font-black text-zinc-500 uppercase mb-1">TDEE</p>
+            <p className="text-xl font-bold text-[#BFFF00]">{aiHealthData.tdee} kcal</p>
+          </GlowCard>
+          <GlowCard className="p-4 text-center border-[#BFFF00]/20">
+            <p className="text-[10px] font-black text-zinc-500 uppercase mb-1">Daily Target</p>
+            <p className="text-xl font-bold text-[#BFFF00]">{aiHealthData.target_calories} kcal</p>
+          </GlowCard>
+          <GlowCard className="p-4 text-center border-[#BFFF00]/20">
+            <p className="text-[10px] font-black text-zinc-500 uppercase mb-1">Status</p>
+            <p className="text-xl font-bold text-[#BFFF00]">{aiHealthData.status}</p>
+          </GlowCard>
+        </div>
+      )}
+
+      {/* AI VIDEOS */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+         {aiResults.map((video, idx) => (
+           <GlowCard key={idx} className="p-4 bg-black/40">
+              <h4 className="font-bold mb-4 text-[#BFFF00] uppercase text-xs tracking-widest">{video.title}</h4>
+              <div className="aspect-video rounded-xl overflow-hidden bg-zinc-900">
+                 <iframe className="w-full h-full" src={video.embed_url} allowFullScreen title={video.title} />
+              </div>
+           </GlowCard>
+         ))}
+      </div>
     </div>
   )}
-</div>
 
-        <WorkoutModal 
-          isOpen={isModalOpen} 
-          onClose={() => setIsModalOpen(false)} 
-          refreshWorkouts={fetchWorkouts}
-          initialData={editingWorkout} 
-        />
-      </main>
+  <WorkoutModal 
+    isOpen={isModalOpen} 
+    onClose={() => setIsModalOpen(false)} 
+    refreshWorkouts={fetchWorkouts}
+    initialData={editingWorkout} 
+  />
+</main> 
+
     </div>
   );
 }
